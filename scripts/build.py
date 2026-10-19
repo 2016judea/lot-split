@@ -45,7 +45,7 @@ PAID = ["owner", "homestead", "emv_land", "emv_bldg", "emv_total", "land_per_sqf
         "meets_4plus_dims", "too_big_for_1_3", "year_built", "fin_sqft", "stories", "bedrooms"]
 FREE = ["pin", "address", "zip", "neighborhood", "area", "width", "depth", "street_side", "corner", "district", "zoning", "listed",
         "units", "building_use", "can_split", "area_ok", "width_ok", "area_close", "width_close", "need_area", "need_width",
-        "min_area", "min_width", "rule_note", "height_1_3", "lon", "lat", "ring"]
+        "min_area", "min_width", "rule_note", "height_1_3", "residential_zoning", "off_list", "lon", "lat", "ring"]
 
 
 def load_assessor():
@@ -59,20 +59,72 @@ def load_assessor():
     return rows
 
 
+def esri_polygon(rings):
+    """An Esri polygon's rings are outer parts (clockwise) AND holes (counter-clockwise), in
+    any number. Reading rings[0] as the shell and the rest as holes punched 84 of 791
+    districts full of holes and left 1,070 lots with no district (2026-10-19)."""
+    from shapely.geometry import LinearRing, MultiPolygon
+    shells, holes = [], []
+    for r in rings:
+        if len(r) < 4:
+            continue
+        (holes if LinearRing(r).is_ccw else shells).append(r)
+    parts = []
+    for sh in shells:
+        sp = Polygon(sh)
+        mine = [h for h in holes if sp.contains(Polygon(h).representative_point())]
+        parts.append(Polygon(sh, mine))
+    if not parts:
+        return None
+    g = parts[0] if len(parts) == 1 else MultiPolygon(parts)
+    return g if g.is_valid else g.buffer(0)
+
+
 def load_built_form():
     feats = []
     for p in sorted(glob.glob(str(CACHE / "built_form" / "page_*.json"))):
         d = json.load(open(p))
         assert d["spatialReference"]["wkid"] == 26915, d["spatialReference"]
         for f in d["features"]:
-            rings = f["geometry"]["rings"]
-            poly = Polygon(rings[0], rings[1:]) if rings else None
-            if poly is not None and not poly.is_valid:
-                poly = poly.buffer(0)
-            feats.append((f["attributes"]["Built_Form"], poly))
+            poly = esri_polygon(f["geometry"]["rings"])
+            if poly is not None:
+                feats.append((f["attributes"]["Built_Form"], poly))
     meta = json.load(open(CACHE / "built_form" / "layer.json"))
     edited = dt.datetime.fromtimestamp(meta["editingInfo"]["dataLastEditDate"] / 1000, dt.UTC).date().isoformat()
     return feats, edited
+
+
+NOT_A_SALE = {"P", "Q"}  # probate and quit-claim deeds: a transfer, not a market price
+
+
+def load_live_sales():
+    """[(pin, first-of-month date, price)] from the newest dated hennepin_sales pull, and the
+    count of recorded sales per month across Minneapolis (to tell a complete month)."""
+    pulls = sorted(glob.glob(str(CACHE / "hennepin_sales" / "*")))
+    assert pulls, "run scripts/pull.py sales"
+    out, months = [], Counter()
+    for p in sorted(glob.glob(pulls[-1] + "/page_*.json")):
+        for f in json.load(open(p))["features"]:
+            a = f["attributes"]
+            d = (a.get("SALE_DATE") or "").strip()
+            if len(d) != 6 or not (a.get("SALE_PRICE") or 0) > 0 or a.get("SALE_CODE") in NOT_A_SALE:
+                continue
+            day = dt.date(int(d[:4]), int(d[4:]), 1)
+            out.append((a["PID"], day, a["SALE_PRICE"]))
+            months[day] += 1
+    return out, months
+
+
+def complete_month_of(months):
+    """The newest month the county has finished recording. Deeds land weeks late, so the last
+    month or two run short (2026-10-19 pull: Jul 651, Aug 510, Sep 275). A month counts as
+    complete when it holds at least 80% of the median of the three months before it."""
+    ms = sorted(months)
+    for i in range(len(ms) - 1, 2, -1):
+        prev = sorted(months[m] for m in ms[i - 3:i])[1]
+        if months[ms[i]] >= 0.8 * prev:
+            return ms[i]
+    return ms[-1]
 
 
 def oriented_sides(poly):
@@ -110,10 +162,14 @@ def main():
     for key, d, v in c.execute(
         "select parcel_key, sale_date, sale_value from sale where parcel_key like 'hennepin:%' and sale_value>0").fetchall():
         sales[key.split(":", 1)[1]].append((d, v))
-    max_sale = c.execute("select max(sale_date) from sale where parcel_key like 'hennepin:%'").fetchone()[0]
     c.close()
-    # the latest month the sale table covers in full is the one before the month of its last date
-    complete_month = (max_sale.replace(day=1) - dt.timedelta(days=1)).replace(day=1)
+    # the county's live layer: each parcel's last recorded sale, month grain (scripts/pull.py)
+    live, by_month_all = load_live_sales()
+    for pin, d, v in live:
+        if not any(x.strftime("%Y-%m") == d.strftime("%Y-%m") and x_v == v for x, x_v in sales[pin]):
+            sales[pin].append((d, v))
+    max_sale = max(by_month_all)
+    complete_month = complete_month_of(by_month_all)
     print(f"sales to {max_sale}; complete month {complete_month:%B %Y}", flush=True)
 
     # universe: 1-3 unit homes and residential vacant land on Urban Neighborhood ground, with a polygon
@@ -186,6 +242,10 @@ def main():
     stats_public = sum(1 for r in out if r["can_split"] and (r["public_owner"] or r["district"] in OFF))
     for r in out:
         r["listed"] = r["can_split"] and not r["public_owner"] and r["district"] not in OFF
+        # why a lot that passes the arithmetic is not on the list, in words the page prints
+        r["off_list"] = ("" if r["listed"] or not r["can_split"] else
+                         f"the city maps it as {r['district']} built form, not house lots" if r["district"] in OFF else
+                         "a public body owns it")
     q.sort(key=lambda r: (r["area"], r["address"]))  # ordinary house lots that just pass come first
     month_sold = [r for r in q for d, v in r["sales"] if d[:7] == complete_month.strftime("%Y-%m")]
     yr_ago = (complete_month - dt.timedelta(days=365)).strftime("%Y-%m")
@@ -228,7 +288,7 @@ def main():
         "median_area": sorted(r["area"] for r in q)[len(q) // 2],
         "median_emv_land": sorted(r["emv_land"] for r in q if r["emv_land"])[len(q) // 2],
         "min_area": rules.MIN_AREA_1_3, "min_width": rules.MIN_WIDTH_1_3,
-        "sales_through": max_sale.isoformat(),
+        "sales_through": max_sale.strftime("%B %Y"), "sales_through_ym": max_sale.strftime("%Y%m"),
     }
     PRIVATE.mkdir(exist_ok=True); BUNDLE.mkdir(exist_ok=True); (SITE / "data").mkdir(parents=True, exist_ok=True)
     json.dump({"stats": stats, "rows": out}, open(PRIVATE / "rows.json", "w"))

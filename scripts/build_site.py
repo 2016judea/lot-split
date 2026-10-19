@@ -52,14 +52,16 @@ def build(stats=None, sample=None, template=None, posthog=None):
 def for_pages():
     out = SITE / "public/data/for"
     out.mkdir(parents=True, exist_ok=True)
+    for old in out.glob("*.json"):  # regenerated from the ledger every build
+        old.unlink()
     if not LEDGER.exists():
         return 0
     k = 0
     for r in csv.DictReader(LEDGER.open()):
-        if not r.get("token") or not r.get("own_record"):
+        if not r.get("token") or r.get("status") == "hold" or not r.get("lot_address"):
             continue
         (out / f"{r['token']}.json").write_text(json.dumps({
-            "address": r["own_record"], "variant": r.get("variant", ""), "who": r.get("who") or "your lot"}))
+            "address": r["lot_address"], "variant": r.get("variant", ""), "who": "for " + r["company"]}))
         k += 1
     return k
 

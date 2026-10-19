@@ -8,3 +8,4 @@ __pycache__/
 .DS_Store
 site/.vercel
 site/api/_full
+site/public/data/for/

@@ -101,6 +101,7 @@ def test_example_and_open_rows_pass_and_draw(outputs):
 # ---- API handlers, in-process ----------------------------------------------------------
 NODE = """
 process.env.FULL_DIR = %r; process.env.ACCESS_SECRET = "test-secret"; process.env.STRIPE_SECRET_KEY = "sk_test_x";
+global.fetch = async () => { throw new Error("no network in the suite"); };
 const h = require(%r);
 const req = { headers: %s, query: %s, method: "GET" };
 let out = { status: 200, headers: {} };
@@ -168,3 +169,48 @@ def test_shipped_page_matches_the_build(outputs):
     if not page.exists():
         pytest.skip("run scripts/build_site.py")
     assert page.read_text() == build_site.build()
+
+
+def test_esri_rings_keep_every_outer_part_and_punch_only_real_holes():
+    # two clockwise squares (two parts) and one counter-clockwise ring inside the first (a hole)
+    a = [[0, 0], [0, 10], [10, 10], [10, 0], [0, 0]]
+    b = [[20, 0], [20, 10], [30, 10], [30, 0], [20, 0]]
+    hole = [[4, 4], [6, 4], [6, 6], [4, 6], [4, 4]]
+    g = build.esri_polygon([a, b, hole])
+    assert g.geom_type == "MultiPolygon" and abs(g.area - 196) < 1e-9
+    from shapely.geometry import Point
+    assert g.contains(Point(25, 5)) and not g.contains(Point(5, 5))
+
+
+def test_every_lot_found_its_built_form_district(outputs):
+    rows = json.loads((ROOT / "private/rows.json").read_text())["rows"]
+    assert sum(r["district"] is None for r in rows) == 0
+
+
+def test_unlock_merges_new_county_sales_into_the_paid_list(tmp_path):
+    """data.js asks Hennepin's live layer for sales since the build and folds them in."""
+    import hashlib, hmac
+    if not (ROOT / "private/bundle/full.json.gz").exists():
+        pytest.skip("run scripts/build.py first")
+    full = json.loads(gzip.open(ROOT / "private/bundle/full.json.gz").read())
+    pin = full["rows"][0]["pin"]
+    alpha = "23456789BCDFGHJKMNPQRSTVWXYZ"
+    chars = lambda b, n: "".join(alpha[x % len(alpha)] for x in b[:n])
+    pw = "QQQQQ" + chars(hmac.new(b"test-secret", b"comp:QQQQQ", hashlib.sha256).digest(), 7)
+    js = f"""
+process.env.FULL_DIR = {json.dumps(str(ROOT / "private/bundle"))}; process.env.ACCESS_SECRET = "test-secret";
+let asked = "";
+global.fetch = async (u) => {{ asked = String(u); return {{ json: async () => ({{ features: [{{ attributes: {{ PID: "{pin}", SALE_DATE: "209901", SALE_PRICE: 123 }} }}] }}) }}; }};
+const zlib = require("zlib");
+const h = require({json.dumps(str(ROOT / "site/api/data.js"))});
+const res = {{ s: 0, status(c){{ this.s = c; return this; }}, setHeader(){{ return this; }}, json(o){{ console.log(JSON.stringify(o)); }},
+  end(b){{ const j = JSON.parse(zlib.gunzipSync(b)); const r = j.rows.find(x => x.pin === "{pin}");
+    console.log(JSON.stringify({{ s: this.s, asked, r, added: j.stats.new_sales_since_build }})); }} }};
+h({{ headers: {{ "x-password": "{pw}" }}, query: {{}} }}, res);
+"""
+    p = subprocess.run(["node", "-e", js], capture_output=True, text=True, timeout=60)
+    assert p.returncode == 0, p.stderr
+    out = json.loads(p.stdout.strip().splitlines()[-1])
+    assert out["s"] == 200 and out["added"] == 1
+    assert out["r"]["last_sale_date"] == "2099-01-01" and out["r"]["last_sale_price"] == 123 and out["r"]["new_sale"]
+    assert "SALE_DATE%3E%3D%27" + full["stats"]["sales_through_ym"] in out["asked"]

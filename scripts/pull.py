@@ -19,6 +19,12 @@ LAYERS = {
     "built_form": (f"{BASE}/Planning_Zoning_Built_Form/FeatureServer/0", True),
     "assessor_2026": (f"{BASE}/Assessing_Department_Parcel_Data_2026/FeatureServer/0", False),
 }
+# Hennepin County's live parcel layer carries each parcel's LAST recorded sale (month grain),
+# current to the month before last; bricks' sale table stops 2026-07-01. Re-pulled into a
+# dated folder so a rebuild a week later reads new sales (2026-10-19).
+HENNEPIN = "https://gis.hennepin.us/arcgis/rest/services/HennepinData/LAND_PROPERTY/MapServer/1"
+WHERE = {"hennepin_sales": "MUNIC_CD='01'"}
+FIELDS = {"hennepin_sales": "OBJECTID,PID,SALE_DATE,SALE_PRICE,SALE_CODE,SALE_CODE_NAME"}
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 
@@ -35,8 +41,8 @@ def get(url, params):
             time.sleep(2 * (attempt + 1))
 
 
-def pull(name, url, geometry):
-    out = CACHE / name
+def pull(name, url, geometry, folder=None):
+    out = CACHE / (folder or name)
     out.mkdir(parents=True, exist_ok=True)
     meta = get(url, {"f": "json"})
     (out / "layer.json").write_text(json.dumps(meta, indent=1))
@@ -48,7 +54,7 @@ def pull(name, url, geometry):
         if f.exists():
             d = json.loads(f.read_text())
         else:
-            p = {"where": "1=1", "outFields": "*", "orderByFields": oid, "resultOffset": offset,
+            p = {"where": WHERE.get(name, "1=1"), "outFields": FIELDS.get(name, "*"), "orderByFields": oid, "resultOffset": offset,
                  "resultRecordCount": page, "f": "json", "returnGeometry": "true" if geometry else "false"}
             if geometry:
                 p["outSR"] = 26915
@@ -61,11 +67,20 @@ def pull(name, url, geometry):
         if not d.get("exceededTransferLimit") or got == 0:
             break
         offset += page
-    cnt = get(f"{url}/query", {"where": "1=1", "returnCountOnly": "true", "f": "json"}).get("count", "?")
+    cnt = get(f"{url}/query", {"where": WHERE.get(name, "1=1"), "returnCountOnly": "true", "f": "json"}).get("count", "?")
     print(f"{name}: {n} rows in {len(list(out.glob('page_*.json')))} pages; server count {cnt}", flush=True)
     return n
 
 
+def pull_sales():
+    import datetime as dt
+    return pull("hennepin_sales", HENNEPIN, False, folder=f"hennepin_sales/{dt.date.today():%Y-%m-%d}")
+
+
 if __name__ == "__main__":
-    for name, (url, geometry) in LAYERS.items():
-        pull(name, url, geometry)
+    if sys.argv[1:] == ["sales"]:
+        pull_sales()
+    else:
+        for name, (url, geometry) in LAYERS.items():
+            pull(name, url, geometry)
+        pull_sales()

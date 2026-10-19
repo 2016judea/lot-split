@@ -102,3 +102,17 @@ Lot ──N:1── BuiltFormDistrict (overlay polygon)  → the minimums
 
 What could not be filled is the position of the existing house on the lot. The
 page says so where it matters (a split may cross the house).
+
+## Reality check, second pass (2026-10-19)
+
+- **Built-form district: now filled for every lot.** The first pass read each Esri polygon's
+  first ring as the shell and every other ring as a hole; 84 of 791 districts are multipart,
+  so 1,070 lots fell in false holes and had no district. Rings are now split by orientation
+  (`build.esri_polygon`). Qualifying went 1,474 to 1,431.
+- **Sales: now current.** bricks' `sale` table stops 2026-07-01. Hennepin's live parcel layer
+  carries each parcel's last recorded sale (month grain) through September 2026, pulled into a
+  dated folder; the paid list merges newer sales live on every unlock. Deeds land weeks late,
+  so the free page counts the latest month the county has fully recorded (July 2026), not the
+  calendar month.
+- **Still not filled:** the position of the house on the lot. A lot that passes may need the
+  house moved; the page says so under every passing lot.

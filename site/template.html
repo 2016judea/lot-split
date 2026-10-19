@@ -143,8 +143,9 @@ function numRow(lab,val,unit,need,ok,close){
 function render(r, who){
   const el=$("#result");
   const close=!r.can_split&&(r.area_close||r.width_close);
-  const verdict=r.can_split?"Passes the split check":close?"Close, but does not pass":r.residential_zoning?"Does not pass":"Not residential ground";
-  const st=r.can_split?"pass":close?"close":"fail";
+  const off=r.can_split&&r.off_list;
+  const verdict=off?"Passes the numbers, off the list":r.can_split?"Passes the split check":close?"Close, but does not pass":r.residential_zoning?"Does not pass":"Not residential ground";
+  const st=off?"close":r.can_split?"pass":close?"close":"fail";
   let why="";
   if(!r.can_split&&r.residential_zoning){ const parts=[]; if(!r.area_ok) parts.push(`${n0(r.need_area-r.area)} sq ft short on area`); if(!r.width_ok) parts.push(`${n0(r.need_width-r.street_side)} ft short along the street`); why=parts.join(" · "); }
   el.innerHTML=`<p class="addr">${esc(title(r.address))}</p><p class="sub">${esc(r.neighborhood?title(r.neighborhood):"")}${r.units?` · ${esc(r.building_use)}`:" · vacant lot"}${who?` · ${esc(who)}`:""}</p>
@@ -152,7 +153,7 @@ function render(r, who){
   <div class="lot">${lotSvg(r)}<div class="nums">${numRow("Lot area",r.area,"sq ft",r.need_area,r.area_ok,r.area_close)}${numRow(r.corner?"Longer street side":"Street side",r.street_side,"ft",r.need_width,r.width_ok,r.width_close)}</div></div>
   <p class="dist">${r.district?`<b>${esc(r.district)}</b> built-form district`:"No built-form district on the city's map"} · ${esc(r.zoning||"")}${r.height_1_3?` · new homes up to ${esc(r.height_1_3)}`:""}${r.corner?" · corner lot":""}${why?` · <span style="color:var(--fail)">${esc(why)}</span>`:""}</p>
   ${r.rule_note?`<p class="note">${esc(r.rule_note)}.</p>`:""}
-  ${r.can_split?`<p class="note">A rule check on the county's dimensions, not a survey or an approval. The dashed line shows where two ${n0(r.street_side/2)} ft lots would meet; whether the house allows it is yours to see.</p>`:""}`;
+  ${off?`<p class="note">Big enough to split, but ${esc(r.off_list)}, so it is left off the full list.</p>`:r.can_split?`<p class="note">A rule check on the county's dimensions, not a survey or an approval. The dashed line shows where two ${n0(r.street_side/2)} ft lots would meet; whether the house allows it is yours to see.</p>`:""}`;
   if(who==null) Paywall.track("lookup",{result:st,district:r.district||""});
 }
 async function lookup(q, who){
@@ -163,7 +164,7 @@ async function lookup(q, who){
     const j=await fetch("/api/check?q="+encodeURIComponent(q)).then(r=>r.json());
     if(j.lot){ hint.textContent=""; render(j.lot, who); return j.lot; }
     if(j.suggestions&&j.suggestions.length){ hint.textContent="Pick one:"; sugg.innerHTML=j.suggestions.map(s=>`<button type="button" data-a="${esc(s)}">${esc(title(s))}</button>`).join(""); return null; }
-    hint.textContent=j.error||"No 1-3 unit lot on Urban Neighborhood ground at that address in the 2026 assessor file. Check the spelling, or it may be a condo, apartment or commercial parcel.";
+    $("#result").innerHTML=""; hint.textContent=j.error||"No 1-3 unit lot on Urban Neighborhood ground at that address in the 2026 assessor file. Check the spelling, or it may be a condo, apartment or commercial parcel.";
   }catch(e){ hint.textContent="Couldn't check right now. Try again in a moment."; }
   return null;
 }
@@ -174,7 +175,7 @@ $("#sugg").addEventListener("click",e=>{const b=e.target.closest("button[data-a]
 // rows: the open sample until unlocked, then the whole list
 let ALL=SAMPLE.open.slice(), shown=0, PAGE=50;
 function rowHtml(r){
-  const paid=Paywall.unlocked?`<span class="paid">${r.homestead?"Owner-occupied":"Not owner-occupied"}${r.owner?` · ${esc(r.owner)}`:""} · land ${money(r.emv_land)} · total ${money(r.emv_total)}${r.last_sale_date?` · sold ${fmtDate(r.last_sale_date)} for ${money(r.last_sale_price)}`:" · no recorded sale"}${r.meets_4plus_dims?" · meets the 4+ unit lot size":""}${r.too_big_for_1_3?" · over the 1-3 unit maximum":""}</span>`:"";
+  const paid=Paywall.unlocked?`<span class="paid">${r.homestead?"Owner-occupied":"Not owner-occupied"}${r.owner?` · ${esc(r.owner)}`:""} · land ${money(r.emv_land)} · total ${money(r.emv_total)}${r.last_sale_date?` · sold ${fmtDate(r.last_sale_date)} for ${money(r.last_sale_price)}`:" · no recorded sale"}${r.meets_4plus_dims?" · meets the 4+ unit lot size":""}${r.new_sale?" · new sale since the last build":""}</span>`:"";
   return `<button type="button" class="row" data-a="${esc(r.address)}"><span class="a">${esc(title(r.address))}</span><span class="d">${n0(r.area)} sq ft · ${n0(r.street_side)} ft<small>${esc(r.district||"")}${r.corner?" · corner":""}</small></span><span class="m">${esc(title(r.neighborhood||""))} · ${esc(r.building_use||"")}${r.rule_note?" · big-lot block":""}</span>${paid}</button>`;
 }
 function view(){
@@ -191,7 +192,7 @@ function draw(reset){
 $("#rows").addEventListener("click",e=>{const b=e.target.closest(".row"); if(!b) return; const r=ALL.find(x=>x.address===b.dataset.a); if(r){render(r,""); $("#q").value=title(r.address); scrollTo({top:0,behavior:"smooth"}); Paywall.track("row_click",{district:r.district||""})}});
 $("#more").onclick=()=>draw(false);
 ["sort","dist"].forEach(id=>$("#"+id).onchange=()=>draw(true)); $("#filter").oninput=()=>draw(true);
-$("#csv").onclick=()=>{ const cols=["address","neighborhood","zip","area","street_side","width","depth","corner","district","zoning","units","building_use","need_area","need_width","rule_note","height_1_3","homestead","owner","emv_land","emv_bldg","emv_total","land_per_sqft","last_sale_date","last_sale_price","meets_4plus_dims","too_big_for_1_3","year_built","pin"];
+$("#csv").onclick=()=>{ const cols=["address","neighborhood","zip","area","street_side","width","depth","corner","district","zoning","units","building_use","need_area","need_width","rule_note","height_1_3","homestead","owner","emv_land","emv_bldg","emv_total","land_per_sqft","last_sale_date","last_sale_price","new_sale","meets_4plus_dims","too_big_for_1_3","year_built","pin"];
   const q=v=>{v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const csv=[cols.join(",")].concat(view().map(r=>cols.map(c=>q(r[c])).join(","))).join("\n");
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="lot-split-minneapolis.csv"; a.click(); Paywall.track("download",{rows:view().length}); };
