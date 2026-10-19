@@ -1,0 +1,11 @@
+{
+  "product": "lot-split",
+  "site": "https://lot-split.vercel.app",
+  "price_usd": 150,
+  "launch": 1792368000,
+  "name": "Lot Split: the full list",
+  "short": "Lot Split",
+  "thing": "full list",
+  "description": "Every Minneapolis 1-3 unit lot big enough to split in two under the Chapter 540 built-form rules: address, lot size, street side, district, owner type, assessor value and last sale, with the sales among them refreshed weekly.",
+  "line": "The full list of every lot that passes, with owner type, assessor value and last sale, plus the spreadsheet and a weekly refresh of new sales among them, is $150, once."
+}

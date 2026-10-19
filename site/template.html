@@ -1,0 +1,217 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lot Split</title><meta name="description" content="__DESC__">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='8' width='28' height='16' fill='%23f6f1e7' stroke='%23111' stroke-width='2'/%3E%3Cline x1='16' y1='8' x2='16' y2='24' stroke='%23c2501f' stroke-width='3' stroke-dasharray='3 2'/%3E%3C/svg%3E">
+<script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};</script><script defer src="/_vercel/insights/script.js"></script>
+__POSTHOG__
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f1e7;--panel:#efe8db;--ink:#1c1813;--ink2:#3e3730;--muted:#6f655b;--rule:#d9d0c1;--display:"Fraunces",Georgia,serif;--body:"Public Sans",system-ui,sans-serif;
+ --pass:#1f6f74;--pass-bg:#d7eceb;--fail:#c2501f;--fail-bg:#f6dccf;--close:#b8860b;--close-bg:#f5e9c6;--need:#8a7f73;
+ --pw-bg:var(--bg);--pw-ink:var(--ink);--pw-soft:var(--muted);--pw-line:var(--rule);--pw-card:#fff;--pw-accent:var(--pass)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#17140f;--panel:#201b15;--ink:#efe8dc;--ink2:#cfc4b6;--muted:#978b7d;--rule:#352d24;--pass:#6fc1c4;--pass-bg:#173a3c;--fail:#f08a58;--fail-bg:#4a2410;--close:#e3b84a;--close-bg:#473812;--need:#9c9083;--pw-card:#201b15}}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body)}
+a{color:inherit}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 64px}
+header{padding:28px 0 8px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,8vw,44px);line-height:1.05;letter-spacing:-.02em;margin:0 0 12px}
+.lede{font-size:17px;color:var(--ink2);margin:0 0 20px}
+.lede b{color:var(--ink)}
+.search{position:relative;margin:0 0 14px}
+.search input{width:100%;font:600 18px var(--body);padding:14px 16px;border-radius:12px;border:1.5px solid var(--ink);background:#fff;color:#111;min-height:52px}
+.search input::placeholder{color:#8a8178;font-weight:500}
+.sugg{position:absolute;left:0;right:0;top:100%;z-index:5;background:#fff;color:#111;border:1px solid var(--rule);border-radius:0 0 12px 12px;box-shadow:0 10px 30px rgba(0,0,0,.12);overflow:hidden}
+.sugg:empty{display:none}
+.sugg button{display:block;width:100%;text-align:left;font:600 16px var(--body);padding:12px 16px;border:0;border-top:1px solid #eee;background:#fff;color:#111;cursor:pointer;min-height:44px}
+.sugg button:hover{background:#f5f1ea}
+.hint{font-size:14px;color:var(--muted);margin:6px 2px 0;min-height:21px}
+.card{background:var(--panel);border-radius:16px;padding:18px 18px 16px;margin:0 0 18px}
+.addr{font-family:var(--display);font-size:26px;line-height:1.1;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+.verdict{display:inline-block;font-weight:800;font-size:15px;letter-spacing:.02em;padding:6px 12px;border-radius:999px;margin:0 0 14px}
+.verdict.pass{background:var(--pass-bg);color:var(--pass)}.verdict.fail{background:var(--fail-bg);color:var(--fail)}.verdict.close{background:var(--close-bg);color:var(--close)}
+.lot{display:grid;grid-template-columns:1fr;gap:16px;align-items:center}
+@media (min-width:600px){.lot{grid-template-columns:220px 1fr}}
+.lot svg{width:100%;height:auto;display:block;max-height:220px}
+.nums{display:grid;gap:12px}
+.num{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline}
+.num .lab{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.num .val{font:700 26px/1 ui-monospace,Menlo,monospace;letter-spacing:-.02em}
+.num .val.pass{color:var(--pass)}.num .val.fail{color:var(--fail)}.num .val.close{color:var(--close)}
+.num .need{grid-column:2;text-align:right;font:600 13px ui-monospace,Menlo,monospace;color:var(--need)}
+.bar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--rule);position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.bar i.pass{background:var(--pass)}.bar i.fail{background:var(--fail)}.bar i.close{background:var(--close)}
+.bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);left:50%}
+.dist{margin:14px 0 0;font-size:14px;color:var(--ink2)}
+.dist b{color:var(--ink)}
+.note{margin:10px 0 0;font-size:13px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 22px}
+@media (min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--panel);border-radius:12px;padding:12px 14px}
+.stat .v{font:700 24px/1.1 ui-monospace,Menlo,monospace;letter-spacing:-.02em}
+.stat .k{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.3}
+h2{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:26px 0 8px}
+.rows{border-top:1px solid var(--rule)}
+.row{display:grid;grid-template-columns:1fr;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--rule);cursor:pointer;text-align:left;width:100%;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit}
+.row:hover .a{text-decoration:underline}
+.row .a{font-weight:700}
+.row .m{font-size:13px;color:var(--muted)}
+.row .d{font:700 15px ui-monospace,Menlo,monospace;text-align:left;color:var(--pass)}
+.row .d small{display:inline;font:600 12px var(--body);color:var(--muted);margin-left:8px}
+@media (min-width:600px){.row{grid-template-columns:1fr auto}.row .d{text-align:right}.row .d small{display:block;margin:0}}
+.row .paid{grid-column:1/-1;font-size:13px;color:var(--ink2)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 10px}
+.toolbar select,.toolbar input{font:600 15px var(--body);padding:9px 10px;border-radius:9px;border:1px solid var(--rule);background:#fff;color:#111;min-height:44px;appearance:none;-webkit-appearance:none}
+.toolbar .csv{margin-left:auto;font:700 14px var(--body);padding:10px 14px;border-radius:9px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;min-height:44px}
+.more{font:700 15px var(--body);padding:12px 16px;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;min-height:44px;margin:10px 0 0;width:100%}
+.how{font-size:14px;color:var(--ink2)}
+.how p{margin:0 0 10px}
+footer{margin-top:28px;font-size:13px;color:var(--muted)}
+[hidden]{display:none!important}
+</style></head><body><div class="wrap">
+<header>
+<p class="eyebrow">Minneapolis · built-form rules · lots checked __BUILT__</p>
+<h1>Can your lot be split?</h1>
+<p class="lede">Minneapolis lets a lot be divided when each new lot is at least <b>__MIN_AREA__ sq ft</b> and <b>__MIN_WIDTH__ ft wide</b> at the street. We ran that check on every 1-3 unit lot in the city: <b>__QUALIFYING__ pass</b>. Type an address to see yours.</p>
+</header>
+
+<div class="search"><input id="q" type="search" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Street address, e.g. 5610 Sheridan Ave S" aria-label="Minneapolis street address" value=""><div class="sugg" id="sugg"></div></div>
+<p class="hint" id="hint"></p>
+
+<section class="card" id="result" aria-live="polite"></section>
+
+<div class="stats">
+<div class="stat"><div class="v">__SOLD_MONTH__</div><div class="k">passing lots sold in __MONTH__</div></div>
+<div class="stat"><div class="v">__SOLD_12__</div><div class="k">sold in the last 12 months, median __MEDIAN__</div></div>
+<div class="stat"><div class="v">__HOMESTEAD__</div><div class="k">of the __QUALIFYING__ are owner-occupied</div></div>
+<div class="stat"><div class="v">__CLOSE__</div><div class="k">more lots are within 10% of passing</div></div>
+</div>
+
+<h2 id="open-h">__OPEN_N__ of the __QUALIFYING__, open to look at</h2>
+<div class="toolbar" id="toolbar" hidden>
+<select id="sort" aria-label="Sort"><option value="small">Ordinary lots first (smallest)</option><option value="area">Biggest lot first</option><option value="margin">Most room over the line</option><option value="land">Highest land value</option><option value="sale">Most recent sale</option><option value="hood">By neighborhood</option></select>
+<select id="dist" aria-label="District"><option value="">All districts</option></select>
+<input id="filter" type="search" placeholder="Filter by street or neighborhood" aria-label="Filter">
+<button class="csv" id="csv" type="button">Download CSV</button>
+</div>
+<div class="rows" id="rows"></div>
+<button class="more" id="more" type="button" hidden>Show 50 more</button>
+<div id="pay"></div>
+
+<h2>How the check works</h2>
+<div class="how">
+<p>The city's Chapter 540 built-form rules set the smallest new lot on Urban Neighborhood ground at __MIN_AREA__ sq ft and __MIN_WIDTH__ ft wide (Table 540-15). A lot can be split in two when it has twice both: __NEED_AREA__ sq ft and __NEED_WIDTH__ ft along the street. On big-lot blocks in Interior 1 and 2 the minimum rises to the average lot within 350 ft (footnote 1); __BIGLOT__ of the passing lots sit on such blocks and were checked against that higher line. Lot area is the county assessor's. Width is read off the county parcel polygon, so a plat may differ by a foot or two; a corner lot is measured along its longer street.</p>
+<p>This is a rule check on public dimensions, not a survey, a plat approval or legal advice. The house's position on the lot is not in any public layer, so a passing lot may still need the house moved or removed. The city's subdivision review (Chapter 598) decides.</p>
+<p>Sources: City of Minneapolis Assessing Department Parcel Data 2026; City of Minneapolis Planning_Zoning_Built_Form overlay (edited __BF_EDITED__); Hennepin County parcel polygons; Hennepin County recorded sales through __SALES_THROUGH__. Lots owned by public bodies, and lots the city maps as Parks or Production built form, pass the arithmetic but are left off the list (__PUBLIC__). __OVER_ACRE__ lots on the list are over an acre; sort by size to find them or skip them. From Aidan Jude at Brick &amp; Mortar (<a href="mailto:aidan@brickandmortar.dev">aidan@brickandmortar.dev</a>).</p>
+</div>
+<footer>Brick &amp; Mortar · <a href="https://brickandmortar.dev/">brickandmortar.dev</a> · <a href="https://randomaidan.substack.com/">Substack</a></footer>
+</div>
+<script src="/paywall.js"></script>
+<script>
+const STATS=__STATS_JSON__, SAMPLE=__SAMPLE_JSON__;
+const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const n0=v=>v==null?"":Math.round(v).toLocaleString("en-US"), money=v=>v==null?"":"$"+Math.round(v).toLocaleString("en-US");
+const fmtDate=d=>d?new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"short",year:"numeric"}):"";
+const title=s=>String(s||"").toLowerCase().replace(/\b([a-z])/g,c=>c.toUpperCase()).replace(/\b(Ave|St|Blvd|Pkwy|Rd|Dr|Ln|Pl|Ter|Cir)\b/g,m=>m).replace(/\b(Ne|Se|Nw|Sw|N|S|E|W)$/,m=>m.toUpperCase());
+const forToken=(location.pathname.match(/^\/for\/([a-z0-9]{6,16})\/?$/)||[])[1]||null;
+let CTX={product:"lot-split",path:location.pathname}, variant=null;
+
+function state(ok,close){return ok?"pass":close?"close":"fail"}
+function lotSvg(r){
+  if(!r.ring) return "";
+  const xs=r.ring.map(p=>p[0]),ys=r.ring.map(p=>p[1]);
+  const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);
+  const w=maxx-minx||1,h=maxy-miny||1,pad=Math.max(w,h)*0.12;
+  const pts=r.ring.map(p=>`${(p[0]-minx+pad).toFixed(2)},${(maxy-p[1]+pad).toFixed(2)}`).join(" ");
+  const W=w+2*pad,H=h+2*pad;
+  const fill=r.can_split?"var(--pass-bg)":(r.area_close||r.width_close)?"var(--close-bg)":"var(--fail-bg)";
+  const stroke=r.can_split?"var(--pass)":(r.area_close||r.width_close)?"var(--close)":"var(--fail)";
+  // the split line: through the centre, across the shorter dimension of the bounding box of the street side
+  let line="";
+  if(r.can_split){ const vert=(!r.corner&&w>=h)||(r.corner&&w<h)? false:true; // split the street side in half
+    line = vert? `<line x1="${(W/2).toFixed(1)}" y1="${pad.toFixed(1)}" x2="${(W/2).toFixed(1)}" y2="${(H-pad).toFixed(1)}" stroke="var(--fail)" stroke-width="${(Math.max(w,h)*0.02).toFixed(2)}" stroke-dasharray="${(Math.max(w,h)*0.06).toFixed(2)} ${(Math.max(w,h)*0.04).toFixed(2)}"/>`
+    : `<line x1="${pad.toFixed(1)}" y1="${(H/2).toFixed(1)}" x2="${(W-pad).toFixed(1)}" y2="${(H/2).toFixed(1)}" stroke="var(--fail)" stroke-width="${(Math.max(w,h)*0.02).toFixed(2)}" stroke-dasharray="${(Math.max(w,h)*0.06).toFixed(2)} ${(Math.max(w,h)*0.04).toFixed(2)}"/>`; }
+  return `<svg viewBox="0 0 ${W.toFixed(1)} ${H.toFixed(1)}" role="img" aria-label="Outline of the lot${r.can_split?" with the split line":""}"><polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${(Math.max(w,h)*0.018).toFixed(2)}" stroke-linejoin="round"/>${line}</svg>`;
+}
+function numRow(lab,val,unit,need,ok,close){
+  const st=state(ok,close), pct=Math.min(100,Math.max(3,val/need*50));
+  return `<div class="num"><span class="lab">${lab}</span><span class="val ${st}">${n0(val)}<small style="font:600 14px var(--body)"> ${unit}</small></span><span class="need">needs ${n0(need)} ${unit} (2 × ${n0(need/2)})</span><div class="bar"><i class="${st}" style="width:${pct}%"></i><b></b></div></div>`;
+}
+function render(r, who){
+  const el=$("#result");
+  const close=!r.can_split&&(r.area_close||r.width_close);
+  const verdict=r.can_split?"Passes the split check":close?"Close, but does not pass":r.residential_zoning?"Does not pass":"Not residential ground";
+  const st=r.can_split?"pass":close?"close":"fail";
+  let why="";
+  if(!r.can_split&&r.residential_zoning){ const parts=[]; if(!r.area_ok) parts.push(`${n0(r.need_area-r.area)} sq ft short on area`); if(!r.width_ok) parts.push(`${n0(r.need_width-r.street_side)} ft short along the street`); why=parts.join(" · "); }
+  el.innerHTML=`<p class="addr">${esc(title(r.address))}</p><p class="sub">${esc(r.neighborhood?title(r.neighborhood):"")}${r.units?` · ${esc(r.building_use)}`:" · vacant lot"}${who?` · ${esc(who)}`:""}</p>
+  <span class="verdict ${st}">${verdict}</span>
+  <div class="lot">${lotSvg(r)}<div class="nums">${numRow("Lot area",r.area,"sq ft",r.need_area,r.area_ok,r.area_close)}${numRow(r.corner?"Longer street side":"Street side",r.street_side,"ft",r.need_width,r.width_ok,r.width_close)}</div></div>
+  <p class="dist">${r.district?`<b>${esc(r.district)}</b> built-form district`:"No built-form district on the city's map"} · ${esc(r.zoning||"")}${r.height_1_3?` · new homes up to ${esc(r.height_1_3)}`:""}${r.corner?" · corner lot":""}${why?` · <span style="color:var(--fail)">${esc(why)}</span>`:""}</p>
+  ${r.rule_note?`<p class="note">${esc(r.rule_note)}.</p>`:""}
+  ${r.can_split?`<p class="note">A rule check on the county's dimensions, not a survey or an approval. The dashed line shows where two ${n0(r.street_side/2)} ft lots would meet; whether the house allows it is yours to see.</p>`:""}`;
+  if(who==null) Paywall.track("lookup",{result:st,district:r.district||""});
+}
+async function lookup(q, who){
+  const hint=$("#hint"), sugg=$("#sugg"); sugg.innerHTML="";
+  if(!q||q.trim().length<3){hint.textContent="";return}
+  hint.textContent="Checking…";
+  try{
+    const j=await fetch("/api/check?q="+encodeURIComponent(q)).then(r=>r.json());
+    if(j.lot){ hint.textContent=""; render(j.lot, who); return j.lot; }
+    if(j.suggestions&&j.suggestions.length){ hint.textContent="Pick one:"; sugg.innerHTML=j.suggestions.map(s=>`<button type="button" data-a="${esc(s)}">${esc(title(s))}</button>`).join(""); return null; }
+    hint.textContent=j.error||"No 1-3 unit lot on Urban Neighborhood ground at that address in the 2026 assessor file. Check the spelling, or it may be a condo, apartment or commercial parcel.";
+  }catch(e){ hint.textContent="Couldn't check right now. Try again in a moment."; }
+  return null;
+}
+let t; $("#q").addEventListener("input",e=>{clearTimeout(t); t=setTimeout(()=>lookup(e.target.value),350)});
+$("#q").addEventListener("keydown",e=>{if(e.key==="Enter"){clearTimeout(t);lookup(e.target.value)}});
+$("#sugg").addEventListener("click",e=>{const b=e.target.closest("button[data-a]"); if(b){$("#q").value=title(b.dataset.a); lookup(b.dataset.a)}});
+
+// rows: the open sample until unlocked, then the whole list
+let ALL=SAMPLE.open.slice(), shown=0, PAGE=50;
+function rowHtml(r){
+  const paid=Paywall.unlocked?`<span class="paid">${r.homestead?"Owner-occupied":"Not owner-occupied"}${r.owner?` · ${esc(r.owner)}`:""} · land ${money(r.emv_land)} · total ${money(r.emv_total)}${r.last_sale_date?` · sold ${fmtDate(r.last_sale_date)} for ${money(r.last_sale_price)}`:" · no recorded sale"}${r.meets_4plus_dims?" · meets the 4+ unit lot size":""}${r.too_big_for_1_3?" · over the 1-3 unit maximum":""}</span>`:"";
+  return `<button type="button" class="row" data-a="${esc(r.address)}"><span class="a">${esc(title(r.address))}</span><span class="d">${n0(r.area)} sq ft · ${n0(r.street_side)} ft<small>${esc(r.district||"")}${r.corner?" · corner":""}</small></span><span class="m">${esc(title(r.neighborhood||""))} · ${esc(r.building_use||"")}${r.rule_note?" · big-lot block":""}</span>${paid}</button>`;
+}
+function view(){
+  let v=ALL.slice(); const d=$("#dist").value, f=($("#filter").value||"").toUpperCase().trim(), s=$("#sort").value;
+  if(d) v=v.filter(r=>r.district===d); if(f) v=v.filter(r=>(r.address+" "+(r.neighborhood||"")).toUpperCase().includes(f));
+  const by={small:(a,b)=>a.area-b.area||a.address.localeCompare(b.address),margin:(a,b)=>(b.area-b.need_area)-(a.area-a.need_area),area:(a,b)=>b.area-a.area,land:(a,b)=>(b.emv_land||0)-(a.emv_land||0),sale:(a,b)=>(b.last_sale_date||"").localeCompare(a.last_sale_date||""),hood:(a,b)=>(a.neighborhood||"").localeCompare(b.neighborhood||"")||a.address.localeCompare(b.address)};
+  v.sort(by[s]||by.small); return v;
+}
+function draw(reset){
+  const v=view(); if(reset) shown=0; shown=Math.min(v.length, shown+PAGE);
+  $("#rows").innerHTML=v.slice(0,shown).map(rowHtml).join("");
+  $("#more").hidden=shown>=v.length; $("#more").textContent=`Show ${Math.min(PAGE,v.length-shown)} more of ${v.length.toLocaleString("en-US")}`;
+}
+$("#rows").addEventListener("click",e=>{const b=e.target.closest(".row"); if(!b) return; const r=ALL.find(x=>x.address===b.dataset.a); if(r){render(r,""); $("#q").value=title(r.address); scrollTo({top:0,behavior:"smooth"}); Paywall.track("row_click",{district:r.district||""})}});
+$("#more").onclick=()=>draw(false);
+["sort","dist"].forEach(id=>$("#"+id).onchange=()=>draw(true)); $("#filter").oninput=()=>draw(true);
+$("#csv").onclick=()=>{ const cols=["address","neighborhood","zip","area","street_side","width","depth","corner","district","zoning","units","building_use","need_area","need_width","rule_note","height_1_3","homestead","owner","emv_land","emv_bldg","emv_total","land_per_sqft","last_sale_date","last_sale_price","meets_4plus_dims","too_big_for_1_3","year_built","pin"];
+  const q=v=>{v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const csv=[cols.join(",")].concat(view().map(r=>cols.map(c=>q(r[c])).join(","))).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="lot-split-minneapolis.csv"; a.click(); Paywall.track("download",{rows:view().length}); };
+
+function unlocked(d){
+  ALL=d.rows; $("#open-h").textContent=`All ${d.rows.length.toLocaleString("en-US")} lots that pass`;
+  const ds=[...new Set(d.rows.map(r=>r.district).filter(Boolean))].sort(); $("#dist").innerHTML='<option value="">All districts</option>'+ds.map(x=>`<option>${esc(x)}</option>`).join("");
+  $("#toolbar").hidden=false; draw(true);
+}
+(async function(){
+  await Paywall.init({onUnlock:unlocked, ctx:CTX, slot:$("#pay")});
+  draw(true);
+  let r=SAMPLE.example, who="a worked example";
+  if(forToken){
+    try{ const f=await fetch("/data/for/"+forToken+".json").then(x=>x.ok?x.json():null);
+      if(f){ variant=f.variant||null; CTX.variant=variant; CTX.token=forToken; Paywall.ctx=CTX; who=f.who||"your lot"; $("#q").value=title(f.address); const got=await lookup(f.address, who); if(got) r=null; }
+    }catch(e){}
+  }
+  if(r){ $("#q").value=title(r.address); render(r, who); }
+  Paywall.track("preview_open",{variant:variant||"none",for:forToken?1:0});
+})();
+</script>
+</body></html>

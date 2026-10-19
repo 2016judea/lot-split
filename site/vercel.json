@@ -1,0 +1,4 @@
+{"buildCommand":"echo build","outputDirectory":"public","functions":{"api/data.js":{"includeFiles":"api/_full/**"},"api/check.js":{"includeFiles":"api/_full/**"}},
+ "rewrites":[{"source":"/for/:token","destination":"/index.html"},{"source":"/for/:token/","destination":"/index.html"}],
+ "redirects":[{"source":"/api/_full/:path*","destination":"/","permanent":false},{"source":"/api/%5Ffull/:path*","destination":"/","permanent":false},{"source":"/api/%5ffull/:path*","destination":"/","permanent":false}],
+ "headers":[{"source":"/data/(.*)","headers":[{"key":"Cache-Control","value":"public, max-age=0, must-revalidate"}]}]}
