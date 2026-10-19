@@ -1,0 +1,12 @@
+[project]
+name = "lot-split"
+version = "0.1.0"
+description = "Minneapolis lots that can be split or hold more homes under the built-form rules (Chapter 540)."
+requires-python = ">=3.11"
+dependencies = ["duckdb>=1.1", "shapely>=2.0", "requests>=2.32"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
