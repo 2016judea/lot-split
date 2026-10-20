@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Write site/public/index.html from site/template.html, site/public/data/stats.json and site/public/data/sample.json.
 Every number on the page is substituted here from the build's output; nothing is typed.
-Also writes site/public/data/for/<token>.json for each recipient in outreach/round1/ledger.csv
+Also writes site/public/data/for/<token>.json for each recipient in outreach/round{1,2}/ledger.csv
 (the /for/<token>/ page opens on their own lot and carries the A/B variant off the URL)."""
 import csv
 import json
@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 SNIPPET = Path.home() / ".claude/skills/site-analytics/posthog_snippet.html"
-LEDGER = ROOT / "outreach/round1/ledger.csv"
+LEDGERS = [ROOT / "outreach/round1/ledger.csv", ROOT / "outreach/round2/ledger.csv"]
 
 
 def money_short(v):
@@ -58,10 +58,8 @@ def for_pages():
     out.mkdir(parents=True, exist_ok=True)
     for old in out.glob("*.json"):  # regenerated from the ledger every build
         old.unlink()
-    if not LEDGER.exists():
-        return 0
     k = 0
-    for r in csv.DictReader(LEDGER.open()):
+    for r in (r for led in LEDGERS if led.exists() for r in csv.DictReader(led.open())):
         if not r.get("token") or r.get("status") == "hold" or not r.get("lot_address"):
             continue
         (out / f"{r['token']}.json").write_text(json.dumps({
