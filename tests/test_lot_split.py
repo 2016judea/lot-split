@@ -214,3 +214,18 @@ h({{ headers: {{ "x-password": "{pw}" }}, query: {{}} }}, res);
     assert out["s"] == 200 and out["added"] == 1
     assert out["r"]["last_sale_date"] == "2099-01-01" and out["r"]["last_sale_price"] == 123 and out["r"]["new_sale"]
     assert "SALE_DATE%3E%3D%27" + full["stats"]["sales_through_ym"] in out["asked"]
+
+
+def test_split_worth_derives_from_a_fitted_stable_land_curve(outputs):
+    s = outputs["stats"]
+    assert 0 < s["beta"] < 1 and abs(s["beta_halves"][0] - s["beta_halves"][1]) <= 0.03 and s["beta_n"] > 1000
+    assert abs(s["split_multiple"] - 2 ** (1 - s["beta"])) < 0.002
+    for r in outputs["full"]["rows"]:
+        if r["emv_land"]:
+            assert abs(r["split_land_value"] - r["emv_land"] * s["split_multiple"]) <= 1000
+            assert abs(r["split_uplift"] - (r["split_land_value"] - r["emv_land"])) <= 1000
+    # the free check carries the worth for a passing lot, and nothing for one that fails
+    idx = outputs["index"]
+    passing = [r for r in idx.values() if r["can_split"]][:50]
+    assert passing and all(r["split_uplift"] for r in passing if r.get("split_land_value"))
+    assert all(r["split_uplift"] is None for r in list(idx.values())[:2000] if not r["can_split"])

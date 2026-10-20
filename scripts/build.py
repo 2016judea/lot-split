@@ -45,7 +45,8 @@ PAID = ["owner", "homestead", "emv_land", "emv_bldg", "emv_total", "land_per_sqf
         "meets_4plus_dims", "too_big_for_1_3", "year_built", "fin_sqft", "stories", "bedrooms"]
 FREE = ["pin", "address", "zip", "neighborhood", "area", "width", "depth", "street_side", "corner", "district", "zoning", "listed",
         "units", "building_use", "can_split", "area_ok", "width_ok", "area_close", "width_close", "need_area", "need_width",
-        "min_area", "min_width", "rule_note", "height_1_3", "residential_zoning", "off_list", "lon", "lat", "ring"]
+        "min_area", "min_width", "rule_note", "height_1_3", "residential_zoning", "off_list", "lon", "lat", "ring",
+        "split_land_value", "split_uplift"]
 
 
 def load_assessor():
@@ -125,6 +126,42 @@ def complete_month_of(months):
         if months[ms[i]] >= 0.8 * prev:
             return ms[i]
     return ms[-1]
+
+
+def fit_land_curve(rows, lo, hi):
+    """What the county's land value says a split is worth (axioms LEDGER L6', 2026-10-20).
+    Within a ZIP, Minneapolis land value is concave in lot area: log(emv_land) = a_zip + b*log(area).
+    Cut a lot in half on the same curve and each half is worth 0.5**b of the whole, so the two
+    together are worth 2**(1-b) of the one. b is fitted here, never typed: OLS of log land value on
+    log lot area, both demeaned within ZIP, on 1-3 unit homes whose area lies in [lo, hi].
+    Two halves split by sha256(pin) must agree within 0.03 or the build stops."""
+    import hashlib
+
+    def ols(sub):
+        by_zip = defaultdict(list)
+        for r in rows:
+            if r["units"] < 1 or not r["emv_land"] or not r["area"] or not r["zip"] or not lo <= r["area"] <= hi:
+                continue
+            if sub is not None and int(hashlib.sha256(r["pin"].encode()).hexdigest(), 16) % 2 != sub:
+                continue
+            by_zip[r["zip"]].append((math.log(r["area"]), math.log(r["emv_land"])))
+        sxx = sxy = 0.0
+        n = 0
+        for pts in by_zip.values():
+            mx = sum(x for x, _ in pts) / len(pts)
+            my = sum(y for _, y in pts) / len(pts)
+            for x, y in pts:
+                sxx += (x - mx) ** 2
+                sxy += (x - mx) * (y - my)
+                n += 1
+        return sxy / sxx, n
+
+    beta, n = ols(None)
+    (b0, n0), (b1, n1) = ols(0), ols(1)
+    assert abs(b0 - b1) <= 0.03, f"land curve unstable: halves {b0:.3f} / {b1:.3f} (n {n0}/{n1})"
+    assert 0 < beta < 1, f"land curve not concave: beta {beta:.3f}"
+    return {"beta": round(beta, 3), "beta_halves": [round(b0, 3), round(b1, 3)], "beta_n": n,
+            "beta_lo": round(lo), "beta_hi": round(hi), "split_multiple": round(2 ** (1 - beta), 3)}
 
 
 def oriented_sides(poly):
@@ -247,6 +284,17 @@ def main():
                          f"the city maps it as {r['district']} built form, not house lots" if r["district"] in OFF else
                          "a public body owns it")
     q.sort(key=lambda r: (r["area"], r["address"]))  # ordinary house lots that just pass come first
+
+    # what the split is worth on the county's own land curve, fitted over the sizes a split moves
+    # between: from half the 5th-percentile passing lot to the 95th-percentile passing lot
+    areas = sorted(r["area"] for r in q)
+    curve = fit_land_curve(out, areas[int(0.05 * (len(areas) - 1))] / 2, areas[int(0.95 * (len(areas) - 1))])
+    mult = 2 ** (1 - curve["beta"])
+    for r in out:
+        ok = r["can_split"] and r["emv_land"]
+        r["split_land_value"] = round(r["emv_land"] * mult, -3) if ok else None
+        r["split_uplift"] = round(r["emv_land"] * (mult - 1), -3) if ok else None
+    print(f"land curve {curve}", flush=True)
     month_sold = [r for r in q for d, v in r["sales"] if d[:7] == complete_month.strftime("%Y-%m")]
     yr_ago = (complete_month - dt.timedelta(days=365)).strftime("%Y-%m")
     yr_prices = sorted(v for r in q for d, v in r["sales"] if yr_ago <= d[:7] <= complete_month.strftime("%Y-%m"))
@@ -286,7 +334,9 @@ def main():
         "sold_last_12": len(yr_prices),
         "median_price_last_12": median,
         "median_area": sorted(r["area"] for r in q)[len(q) // 2],
-        "median_emv_land": sorted(r["emv_land"] for r in q if r["emv_land"])[len(q) // 2],
+        "median_emv_land": (lambda v: v[len(v) // 2])(sorted(r["emv_land"] for r in q if r["emv_land"])),
+        "median_split_uplift": (lambda v: v[len(v) // 2])(sorted(r["split_uplift"] for r in q if r["split_uplift"])),
+        **curve, "beta_date": dt.date.today().isoformat(),
         "min_area": rules.MIN_AREA_1_3, "min_width": rules.MIN_WIDTH_1_3,
         "sales_through": max_sale.strftime("%B %Y"), "sales_through_ym": max_sale.strftime("%Y%m"),
     }

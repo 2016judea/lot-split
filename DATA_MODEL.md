@@ -66,6 +66,7 @@ Lot ──N:1── BuiltFormDistrict (overlay polygon)  → the minimums
 | owner_type (homestead / not) | is the owner living there, or is it an investor |
 | emv_land, emv_building, emv_total | what the county thinks the dirt is worth vs the house |
 | land value per sqft of lot | is the second lot worth more than the house on it |
+| split_land_value, split_uplift | what the two lots would carry in county land value after a split, and how much more than the one lot today |
 
 ## RecordedSale — *what does the market pay for these?*
 
@@ -116,3 +117,22 @@ page says so where it matters (a split may cross the house).
   calendar month.
 - **Still not filled:** the position of the house on the lot. A lot that passes may need the
   house moved; the page says so under every passing lot.
+
+## What the split is worth (2026-10-20)
+
+`split_land_value = emv_land × 2^(1−β)`, `split_uplift = split_land_value − emv_land`,
+rounded to $1,000, on every lot that passes. In the free check and in the paid CSV.
+
+- **β is fitted in `scripts/build.py` (`fit_land_curve`), never typed.** OLS of log county land
+  value on log lot area, both demeaned within ZIP, over 1-3 unit homes whose area lies between
+  half the 5th-percentile passing lot and the 95th-percentile passing lot: the sizes a split moves
+  between. Build of 2026-10-20: **β = 0.686, n = 61,995, lots 5,062 to 22,670 sq ft**, so
+  2^(1−β) = 1.243. Two halves split by sha256(pin): 0.694 / 0.677; the build fails if they
+  differ by more than 0.03. (Halves by md5(pin) came out 0.704 / 0.668, a 0.036 gap; sha1
+  0.680 / 0.692. The hash is fixed at sha256 and stated here so the check is not re-chosen.)
+- Median passing lot: $249,300 of land value, about +$61,000 on a split.
+- Grounded in the axioms ledger law L6′ (`~/.claude/skills/axioms/LEDGER.md`): β 0.71 on
+  county.duckdb dwellings of 8,000–30,000 sq ft.
+- **It is the county's land value, not a price.** A probe on recorded vacant-lot sales in
+  Minneapolis was far more concave (β ≈ 0.17, n = 105), which would make a split worth much
+  less on the market. Too small and noisy to publish; it is not on the page.

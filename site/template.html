@@ -48,6 +48,7 @@ h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,8vw,44px);lin
 .dist{margin:14px 0 0;font-size:14px;color:var(--ink2)}
 .dist b{color:var(--ink)}
 .note{margin:10px 0 0;font-size:13px;color:var(--muted)}
+.worth{margin:12px 0 0;font-size:16px;line-height:1.4;color:var(--ink2)}.worth b{color:var(--pass);font-weight:700}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 22px}
 @media (min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}}
 .stat{background:var(--panel);border-radius:12px;padding:12px 14px}
@@ -105,6 +106,7 @@ footer{margin-top:28px;font-size:13px;color:var(--muted)}
 <div class="how">
 <p>The city's Chapter 540 built-form rules set the smallest new lot on Urban Neighborhood ground at __MIN_AREA__ sq ft and __MIN_WIDTH__ ft wide (Table 540-15). A lot can be split in two when it has twice both: __NEED_AREA__ sq ft and __NEED_WIDTH__ ft along the street. On big-lot blocks in Interior 1 and 2 the minimum rises to the average lot within 350 ft (footnote 1); __BIGLOT__ of the passing lots sit on such blocks and were checked against that higher line. Lot area is the county assessor's. Width is read off the county parcel polygon, so a plat may differ by a foot or two; a corner lot is measured along its longer street.</p>
 <p>This is a rule check on public dimensions, not a survey, a plat approval or legal advice. The house's position on the lot is not in any public layer, so a passing lot may still need the house moved or removed. The city's subdivision review (Chapter 598) decides.</p>
+<p>What a split is worth is read off the county's own land values, not sales. Within a ZIP, Minneapolis land value grows slower than lot size: across __BETA_N__ homes on lots of __BETA_LO__ to __BETA_HI__ sq ft, doubling the lot raises its land value by about __DOUBLE_PCT__% (land value rises with area to the power __BETA__). So two half-lots carry about __SPLIT_PCT__% more land value than the one lot they came from. That is the county's land value, not a price a buyer would pay.</p>
 <p>Sources: City of Minneapolis Assessing Department Parcel Data 2026; City of Minneapolis Planning_Zoning_Built_Form overlay (edited __BF_EDITED__); Hennepin County parcel polygons; Hennepin County recorded sales through __SALES_THROUGH__. Lots owned by public bodies, and lots the city maps as Parks or Production built form, pass the arithmetic but are left off the list (__PUBLIC__). __OVER_ACRE__ lots on the list are over an acre; sort by size to find them or skip them. From Aidan Jude at Brick &amp; Mortar (<a href="mailto:aidan@brickandmortar.dev">aidan@brickandmortar.dev</a>).</p>
 </div>
 <footer>Brick &amp; Mortar · <a href="https://brickandmortar.dev/">brickandmortar.dev</a> · <a href="https://randomaidan.substack.com/">Substack</a></footer>
@@ -153,6 +155,7 @@ function render(r, who){
   <div class="lot">${lotSvg(r)}<div class="nums">${numRow("Lot area",r.area,"sq ft",r.need_area,r.area_ok,r.area_close)}${numRow(r.corner?"Longer street side":"Street side",r.street_side,"ft",r.need_width,r.width_ok,r.width_close)}</div></div>
   <p class="dist">${r.district?`<b>${esc(r.district)}</b> built-form district`:"No built-form district on the city's map"} · ${esc(r.zoning||"")}${r.height_1_3?` · new homes up to ${esc(r.height_1_3)}`:""}${r.corner?" · corner lot":""}${why?` · <span style="color:var(--fail)">${esc(why)}</span>`:""}</p>
   ${r.rule_note?`<p class="note">${esc(r.rule_note)}.</p>`:""}
+  ${r.can_split&&!off&&r.split_land_value?`<p class="worth">Split in two, the county's own land values would put the two lots at about <b>${money(r.split_land_value)}</b>, <b>${money(r.split_uplift)} more</b> than today.</p>`:""}
   ${off?`<p class="note">Big enough to split, but ${esc(r.off_list)}, so it is left off the full list.</p>`:r.can_split?`<p class="note">A rule check on the county's dimensions, not a survey or an approval. The dashed line shows where two ${n0(r.street_side/2)} ft lots would meet; whether the house allows it is yours to see.</p>`:""}`;
   if(who==null) Paywall.track("lookup",{result:st,district:r.district||""});
 }
@@ -192,7 +195,7 @@ function draw(reset){
 $("#rows").addEventListener("click",e=>{const b=e.target.closest(".row"); if(!b) return; const r=ALL.find(x=>x.address===b.dataset.a); if(r){render(r,""); $("#q").value=title(r.address); scrollTo({top:0,behavior:"smooth"}); Paywall.track("row_click",{district:r.district||""})}});
 $("#more").onclick=()=>draw(false);
 ["sort","dist"].forEach(id=>$("#"+id).onchange=()=>draw(true)); $("#filter").oninput=()=>draw(true);
-$("#csv").onclick=()=>{ const cols=["address","neighborhood","zip","area","street_side","width","depth","corner","district","zoning","units","building_use","need_area","need_width","rule_note","height_1_3","homestead","owner","emv_land","emv_bldg","emv_total","land_per_sqft","last_sale_date","last_sale_price","new_sale","meets_4plus_dims","too_big_for_1_3","year_built","pin"];
+$("#csv").onclick=()=>{ const cols=["address","neighborhood","zip","area","street_side","width","depth","corner","district","zoning","units","building_use","need_area","need_width","rule_note","height_1_3","homestead","owner","emv_land","split_land_value","split_uplift","emv_bldg","emv_total","land_per_sqft","last_sale_date","last_sale_price","new_sale","meets_4plus_dims","too_big_for_1_3","year_built","pin"];
   const q=v=>{v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const csv=[cols.join(",")].concat(view().map(r=>cols.map(c=>q(r[c])).join(","))).join("\n");
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="lot-split-minneapolis.csv"; a.click(); Paywall.track("download",{rows:view().length}); };

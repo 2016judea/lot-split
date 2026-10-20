@@ -38,6 +38,10 @@ def build(stats=None, sample=None, template=None, posthog=None):
         "__BIGLOT__": n(stats["big_lot_blocks"]),
         "__BF_EDITED__": stats["built_form_edited"], "__SALES_THROUGH__": stats["sales_through"],
         "__PUBLIC__": n(stats["qualifying_public_excluded"]), "__OVER_ACRE__": n(stats["over_acre"]),
+        "__BETA__": f"{stats['beta']:.2f}", "__BETA_N__": n(stats["beta_n"]),
+        "__BETA_LO__": n(stats["beta_lo"]), "__BETA_HI__": n(stats["beta_hi"]),
+        "__DOUBLE_PCT__": str(round((2 ** stats["beta"] - 1) * 100)),
+        "__SPLIT_PCT__": str(round((stats["split_multiple"] - 1) * 100)),
         "__STATS_JSON__": json.dumps({k: v for k, v in stats.items() if k != "by_neighborhood"}),
         "__SAMPLE_JSON__": json.dumps(sample),
     }

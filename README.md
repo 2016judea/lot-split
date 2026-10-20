@@ -16,12 +16,21 @@ The city's subdivision review (Chapter 598) decides.
 
 - **Free:** any address in the city (the verdict, lot area and street side against the
   district's minimum, the built-form district, the big-lot footnote when it applies),
-  ten passing lots to look at, and the market numbers: passing lots sold in the latest
+  what the split is worth in county land value (below), ten passing lots to look at, and the market numbers: passing lots sold in the latest
   month the county has fully recorded, and over the last 12 months.
 - **Paid ($150, once):** the full list of every passing lot with owner, owner-occupied or
-  not, county land and total value, last recorded sale, year built and the 4+ unit test,
+  not, county land and total value, the split's county land value and uplift, last recorded sale, year built and the 4+ unit test,
   as a CSV. Each unlock merges in the sales Hennepin County has recorded since the build,
   read live from its parcel layer (`site/api/data.js`).
+
+## What the split is worth
+
+Within a ZIP, Minneapolis county land value grows slower than lot size:
+`log(land) = a_zip + β·log(area)`. Two half-lots on the same curve carry `2^(1−β)` of the one
+lot's land value. The build fits β from the assessor table every run (2026-10-20: **β 0.686,
+n 61,995** homes of 5,062–22,670 sq ft, hash halves 0.694 / 0.677), so a split adds about 24%:
+`split_land_value` and `split_uplift` on every passing lot. County land value, not a sale price.
+See `DATA_MODEL.md`.
 
 ## Price
 
