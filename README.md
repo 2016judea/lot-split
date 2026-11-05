@@ -68,7 +68,7 @@ ideal model and what could not be filled (where the house sits on the lot).
 Only `site/public/` is served. The paid bundle goes up sealed (AES-256-GCM, a fresh
 `BUNDLE_KEY` per deploy, `scripts/seal.py`) and only `/api/data` opens it.
 Comp password: `scripts/issue_password.py "comp:<who>"`. Lost password: `scripts/fulfil.py <cs_live_...>`.
-Stripe webhook: routed through `~/Desktop/stripe-router` (registered 2026-10-19).
+Stripe webhook: routed through `~/Desktop/workspace/stripe-router` (registered 2026-10-19).
 
 ## Distribution
 

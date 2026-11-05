@@ -15,7 +15,7 @@ reader's own public record, then the split-worth line for a lot that passes.
 Who and which address live in outreach/round2/recipients.json (gitignored; each email was read off
 the firm's own site or the licence filing). Every number in a draft is read here from the build
 (private/rows.json, stats.json), the permit cache or the licence cache. Deduped against
-~/Desktop/outreach-ledger/outreach.duckdb `touch` (any status), ~/Desktop/paid-round2/queue.json and
+~/Desktop/workspace/outreach-ledger/outreach.duckdb `touch` (any status), ~/Desktop/workspace/paid-round2/queue.json and
 round 1's ledger, by address and by non-webmail domain; every domain must answer an MX lookup.
 Writes outreach/round2/ledger.csv and drafts/<token>.txt. Nothing is sent.
 """

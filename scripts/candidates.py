@@ -13,7 +13,7 @@ Segments (brief 2026-10-18):
 
 Emails: MN DLI licence export (secure.doli.state.mn.us, curled 2026-10-17 by busy-contractors)
 or Overture places 2026-08-19.0 (bricks closed_system overture_places). Each email's domain must
-answer an MX lookup. Deduped against ~/Desktop/outreach-ledger/outreach.duckdb `contacted`.
+answer an MX lookup. Deduped against ~/Desktop/workspace/outreach-ledger/outreach.duckdb `contacted`.
 A/B alternates within each segment. Writes outreach/round1/ledger.csv and drafts/<token>.txt
 (both gitignored). Nothing is sent.
 """
@@ -28,7 +28,7 @@ OUT = ROOT / "outreach" / "round1"
 CACHE = ROOT / "data" / "cache"
 SITE = "https://lot-split.vercel.app"
 SUBSTACK = "https://randomaidan.substack.com/p/business-prototypes"
-DLI = Path.home() / "Desktop/busy-contractors/pipeline/cache/dli_res.csv"
+DLI = Path.home() / "Desktop/workspace/busy-contractors/pipeline/cache/dli_res.csv"
 DLI_DATE = "2026-10-17"
 OVERTURE_DATE = "2026-08-19"
 PERMITS = "https://services.arcgis.com/afSMGVsC7QlRK1kZ/arcgis/rest/services/CCS_Permits/FeatureServer/0/query"
@@ -89,7 +89,7 @@ def main():
             for n in (r["Name"], r["DBA_Name"]):
                 if n:
                     dli.setdefault(norm(n), (e, r["Name"].title()))
-    cs = duckdb.connect(str(Path.home() / "Desktop/bricks/data/closed_system.duckdb"), read_only=True)
+    cs = duckdb.connect(str(Path.home() / "Desktop/workspace/bricks/data/closed_system.duckdb"), read_only=True)
     places = []
     for key, a in cs.execute("select parcel_key, attrs from record where layer='overture_places' and attrs like '%@%'").fetchall():
         a = json.loads(a)
@@ -98,7 +98,7 @@ def main():
     cs.close()
     ov_by_name = {norm(a["name"]): a for _, a in places if a.get("name")}
 
-    led = duckdb.connect(str(Path.home() / "Desktop/outreach-ledger/outreach.duckdb"), read_only=True)
+    led = duckdb.connect(str(Path.home() / "Desktop/workspace/outreach-ledger/outreach.duckdb"), read_only=True)
     contacted = {k for (k,) in led.execute("select recipient_key from contacted").fetchall() if k}
     contacted_orgs = {norm(o) for (o,) in led.execute("select org from contacted where org is not null").fetchall()}
     led.close()
